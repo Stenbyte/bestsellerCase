@@ -2,10 +2,12 @@ import cors from 'cors'
 import express from 'express'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 import { registerRoutes } from './routes/index.js'
-import { SEED_ROOT } from './store/paths.js'
+import { SEED_ROOT, UPLOAD_ROOT } from './store/paths.js'
+import { ensureUploadDir } from './store/uploads.js'
 
 export function createApp() {
   const app = express()
+  ensureUploadDir()
 
   app.use(
     cors({
@@ -20,6 +22,7 @@ export function createApp() {
 
   registerRoutes(app)
 
+  app.use('/assets/uploads', express.static(UPLOAD_ROOT, { fallthrough: false, index: false }))
   app.use('/assets', express.static(SEED_ROOT, { fallthrough: false, index: false }))
 
   app.use(notFoundHandler)

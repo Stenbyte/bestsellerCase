@@ -7,6 +7,7 @@ import { registerImages } from './images.js'
 import { registerPartners } from './partners.js'
 import { registerStats } from './stats.js'
 import { registerTickets } from './tickets.js'
+import { registerUploads } from './uploads.js'
 
 export function createProtectedApi(): Router {
   const api = createRouter()
@@ -24,5 +25,6 @@ export function registerRoutes(app: Express): void {
   registerPartners(api)
   registerStats(api)
   registerImages(api)
+  registerUploads(api)
   app.use('/api', api)
 }

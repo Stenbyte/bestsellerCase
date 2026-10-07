@@ -10,16 +10,18 @@ import type { Partner, SeedImage } from '@recolour/core'
 
 const router = useRouter()
 const ui = useUiStore()
-const { createTicket, loadPartners, loadImages } = useTickets()
+const { createTicket, loadPartners, loadImages, uploadImage } = useTickets()
 
 const fieldsRef = ref<InstanceType<typeof TicketCreateFields> | null>(null)
 const partners = ref<Partner[]>([])
 const images = ref<SeedImage[]>([])
 const imagesOpen = ref(false)
 const submitting = ref(false)
+const uploading = ref(false)
 const formError = ref<string | null>(null)
 const fieldErrors = ref<Record<string, string>>({})
 const imagePaths = ref<string[]>([])
+const uploadedExtras = ref<SeedImage[]>([])
 
 onMounted(async () => {
   ;[partners.value, images.value] = await Promise.all([loadPartners(), loadImages()])
@@ -37,6 +39,29 @@ function applyValidationDetails(details: unknown) {
     if (flat.formErrors?.[0]) formError.value = flat.formErrors[0]
   }
   fieldErrors.value = next
+}
+
+async function onUpload(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+
+  uploading.value = true
+  formError.value = null
+  try {
+    const image = await uploadImage(file)
+    uploadedExtras.value = [...uploadedExtras.value, image]
+    if (!imagePaths.value.includes(image.path)) {
+      imagePaths.value = [...imagePaths.value, image.path]
+    }
+    imagesOpen.value = true
+    ui.setBanner('Image uploaded', 'success')
+  } catch (err) {
+    formError.value = err instanceof Error ? err.message : 'Upload failed'
+  } finally {
+    uploading.value = false
+  }
 }
 
 async function submit() {
@@ -70,7 +95,9 @@ async function submit() {
   <section class="page">
     <header class="page__head">
       <h1>Create ticket</h1>
-      <p class="lede">Pick seed images from the allowlist. Paths are validated on the server.</p>
+      <p class="lede">
+        Pick seed images or upload a JPEG. Paths are allowlisted / validated on the server.
+      </p>
     </header>
 
     <form class="form" @submit.prevent="submit">
@@ -86,10 +113,26 @@ async function submit() {
         <p class="hint">
           {{ imagePaths.length }} selected
           <button type="button" class="linkish" @click="imagesOpen = !imagesOpen">
-            {{ imagesOpen ? 'Hide list' : 'Choose images' }}
+            {{ imagesOpen ? 'Hide list' : 'Choose seed images' }}
           </button>
+          <label class="linkish upload-label">
+            {{ uploading ? 'Uploading…' : 'Upload JPEG' }}
+            <input
+              type="file"
+              accept="image/jpeg,.jpg,.jpeg"
+              :disabled="uploading"
+              @change="onUpload"
+            />
+          </label>
         </p>
-        <ImagePicker v-if="imagesOpen" v-model="imagePaths" :images="images" />
+        <ul v-if="uploadedExtras.length" class="uploaded">
+          <li v-for="img in uploadedExtras" :key="img.path">{{ img.path }}</li>
+        </ul>
+        <ImagePicker
+          v-if="imagesOpen"
+          v-model="imagePaths"
+          :images="[...images, ...uploadedExtras]"
+        />
       </fieldset>
 
       <p v-if="formError" class="field-error">{{ formError }}</p>
@@ -155,6 +198,27 @@ legend {
   text-decoration: underline;
   cursor: pointer;
   padding: 0;
+}
+
+.upload-label {
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.upload-label input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.uploaded {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 
 .actions {

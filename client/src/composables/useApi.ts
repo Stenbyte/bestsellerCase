@@ -4,7 +4,7 @@ import { useUiStore } from '@/stores/ui'
 
 export async function apiFetch<T>(
   path: string,
-  options: RequestInit & { json?: unknown } = {},
+  options: RequestInit & { json?: unknown; formData?: FormData } = {},
 ): Promise<T> {
   const auth = useAuthStore()
   const ui = useUiStore()
@@ -17,11 +17,16 @@ export async function apiFetch<T>(
     headers.set('Authorization', `Bearer ${auth.token}`)
   }
 
-  const { json, ...rest } = options
+  const { json, formData, ...rest } = options
   const res = await fetch(path, {
     ...rest,
     headers,
-    body: json !== undefined ? JSON.stringify(json) : rest.body,
+    body:
+      formData !== undefined
+        ? formData
+        : json !== undefined
+          ? JSON.stringify(json)
+          : rest.body,
   })
 
   if (res.status === 204) {

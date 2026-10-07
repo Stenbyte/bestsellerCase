@@ -1,4 +1,5 @@
 import type { Partner, Ticket } from '@recolour/core'
+import { isUploadedImagePath } from './uploads.js'
 
 export const SEED_PARTNERS: Partner[] = [
   { id: 'partner-colorlab', name: 'ColorLab' },
@@ -31,7 +32,7 @@ const SEED_IMAGE_SET = new Set<string>(SEED_IMAGE_PATHS)
 
 export function isAllowedImagePath(imagePath: string): boolean {
   if (imagePath.includes('..') || pathIsAbsolute(imagePath)) return false
-  return SEED_IMAGE_SET.has(imagePath)
+  return SEED_IMAGE_SET.has(imagePath) || isUploadedImagePath(imagePath)
 }
 
 function pathIsAbsolute(imagePath: string): boolean {

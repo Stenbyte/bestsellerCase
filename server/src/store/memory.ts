@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { ApprovedPhoto, CreateTicketInput, Partner, Ticket } from '@recolour/core'
 import { buildSeedTickets, SEED_PARTNERS } from './seed.js'
+import { resetUploads } from './uploads.js'
 
 export interface MemoryStore {
   partners: Partner[]
@@ -24,6 +25,7 @@ export function getStore(): MemoryStore {
 
 export function resetStore(): void {
   store = createSeededStore()
+  resetUploads()
 }
 
 export function listPartners(): Partner[] {

@@ -90,6 +90,16 @@ export function useTickets() {
     return data.stats
   }
 
+  async function uploadImage(file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const data = await apiFetch<{ image: SeedImage }>('/api/uploads', {
+      method: 'POST',
+      formData,
+    })
+    return data.image
+  }
+
   return {
     tickets,
     loading,
@@ -104,5 +114,6 @@ export function useTickets() {
     loadImages,
     loadApproved,
     loadStats,
+    uploadImage,
   }
 }
