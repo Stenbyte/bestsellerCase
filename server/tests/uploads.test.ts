@@ -5,6 +5,10 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { createApp } from '../src/app.js'
 import { resetStore } from '../src/store/memory.js'
 import { SEED_ROOT } from '../src/store/paths.js'
+import {
+  clearUploadedPathCache,
+  hydrateUploadedPaths,
+} from '../src/store/uploads.js'
 
 async function loginAs(role: 'operator' | 'manager') {
   const res = await request(createApp()).post('/api/auth/login').send({ role })
@@ -113,5 +117,36 @@ describe('uploads', () => {
     )
     expect(asset.status).toBe(200)
     expect(asset.headers['content-type']).toMatch(/image\/jpeg/)
+  })
+
+  it('rehydrates allowlist from disk after in-memory cache loss', async () => {
+    const token = await loginAs('operator')
+    const upload = await request(createApp())
+      .post('/api/uploads')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', MINIMAL_JPEG, {
+        filename: 'pixel.jpg',
+        contentType: 'image/jpeg',
+      })
+    expect(upload.status).toBe(201)
+
+  
+    clearUploadedPathCache()
+    hydrateUploadedPaths()
+
+    const create = await request(createApp())
+      .post('/api/tickets')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        photoId: 'upload-restart',
+        style: 'Uploaded',
+        priority: 'low',
+        partnerId: 'partner-colorlab',
+        pantoneNotes: 'notes',
+        imagePaths: [upload.body.image.path],
+      })
+
+    expect(create.status).toBe(201)
+    expect(create.body.ticket.imagePaths).toEqual([upload.body.image.path])
   })
 })
