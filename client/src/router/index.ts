@@ -9,7 +9,7 @@ declare module 'vue-router' {
   }
 }
 
-const routes: RouteRecordRaw[] = [
+export const routes: RouteRecordRaw[] = [
   {
     path: '/login',
     name: 'login',
@@ -52,31 +52,35 @@ const routes: RouteRecordRaw[] = [
   },
 ]
 
-const router = createRouter({
-  history: createWebHistory(),
-  routes,
-})
+export function createAppRouter() {
+  const router = createRouter({
+    history: createWebHistory(),
+    routes,
+  })
 
-router.beforeEach((to) => {
-  const auth = useAuthStore()
+  router.beforeEach((to) => {
+    const auth = useAuthStore()
 
-  if (to.meta.public) {
-    if (auth.isAuthenticated && to.name === 'login') {
+    if (to.meta.public) {
+      if (auth.isAuthenticated && to.name === 'login') {
+        return { name: 'dashboard' }
+      }
+      return true
+    }
+
+    if (!auth.isAuthenticated) {
+      return { name: 'login', query: { redirect: to.fullPath } }
+    }
+
+    const allowed = to.meta.roles
+    if (allowed && auth.role && !allowed.includes(auth.role)) {
       return { name: 'dashboard' }
     }
+
     return true
-  }
+  })
 
-  if (!auth.isAuthenticated) {
-    return { name: 'login', query: { redirect: to.fullPath } }
-  }
+  return router
+}
 
-  const allowed = to.meta.roles
-  if (allowed && auth.role && !allowed.includes(auth.role)) {
-    return { name: 'dashboard' }
-  }
-
-  return true
-})
-
-export default router
+export default createAppRouter()

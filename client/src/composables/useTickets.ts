@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { apiFetch } from '@/composables/useApi'
+import { buildTicketQuery } from '@/composables/ticketQuery'
 import type {
   ApprovedPhoto,
   CreateTicketInput,
@@ -19,11 +20,7 @@ export function useTickets() {
     loading.value = true
     error.value = null
     try {
-      const params = new URLSearchParams()
-      if (filters.status) params.set('status', filters.status)
-      if (filters.priority) params.set('priority', filters.priority)
-      if (filters.partnerId) params.set('partnerId', filters.partnerId)
-      const qs = params.toString()
+      const qs = buildTicketQuery(filters)
       const data = await apiFetch<{ tickets: Ticket[] }>(
         `/api/tickets${qs ? `?${qs}` : ''}`,
       )
