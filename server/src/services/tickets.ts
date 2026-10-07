@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { nextStatus } from '../domain/transitions.js'
 import { logEvent } from '../lib/telemetry.js'
 import {
   getPartner,
@@ -39,6 +40,21 @@ function requireTicket(id: string): Ticket {
   return ticket
 }
 
+function requireTransition(
+  ticket: Ticket,
+  action: 'send' | 'partner_progress' | 'approve' | 'reject',
+): TicketStatus {
+  const next = nextStatus(ticket.status, action)
+  if (!next) {
+    throw AppError.conflict(`Cannot ${action} ticket in status '${ticket.status}'`, {
+      ticketId: ticket.id,
+      from: ticket.status,
+      action,
+    })
+  }
+  return next
+}
+
 export function getTicketById(id: string): Ticket {
   const ticket = requireTicket(id)
   logEvent('ticket.get', { ticketId: id, status: ticket.status })
@@ -52,7 +68,7 @@ export function createTicket(input: CreateTicketInput, createdBy: string): Ticke
 
   const invalidPaths = input.imagePaths.filter((p) => !isAllowedImagePath(p))
   if (invalidPaths.length > 0) {
-    throw AppError.validation('One or more imagePaths are not in the seed allowlist', {
+    throw AppError.validation('One or more imagePaths are not allowlisted', {
       invalidPaths,
     })
   }
@@ -67,26 +83,14 @@ export function createTicket(input: CreateTicketInput, createdBy: string): Ticke
   return ticket
 }
 
-function assertStatus(ticket: Ticket, expected: TicketStatus, action: string): void {
-  if (ticket.status !== expected) {
-    throw AppError.conflict(`Cannot ${action} ticket in status '${ticket.status}'`, {
-      ticketId: ticket.id,
-      from: ticket.status,
-      expected,
-      action,
-    })
-  }
-}
-
-/** Mock partner flow: pending → sent → in_progress → completed (immediate). */
 export function sendTicket(id: string, actorId: string): Ticket {
   const ticket = requireTicket(id)
-  assertStatus(ticket, 'pending', 'send')
+  const status = requireTransition(ticket, 'send')
 
   const now = new Date().toISOString()
   const updated: Ticket = {
     ...ticket,
-    status: 'completed',
+    status,
     partnerReceiptId: `rcpt-${randomUUID()}`,
     updatedAt: now,
   }
@@ -97,7 +101,28 @@ export function sendTicket(id: string, actorId: string): Ticket {
     actorId,
     partnerId: updated.partnerId,
     partnerReceiptId: updated.partnerReceiptId,
-    path: 'pending→sent→in_progress→completed',
+    to: status,
+  })
+  return updated
+}
+
+export function progressPartnerTicket(id: string): Ticket {
+  const ticket = requireTicket(id)
+  const from = ticket.status
+  const status = requireTransition(ticket, 'partner_progress')
+
+  const updated: Ticket = {
+    ...ticket,
+    status,
+    updatedAt: new Date().toISOString(),
+  }
+  saveTicket(updated)
+
+  logEvent('ticket.partner_progress', {
+    ticketId: updated.id,
+    from,
+    to: status,
+    partnerReceiptId: updated.partnerReceiptId,
   })
   return updated
 }
@@ -107,7 +132,7 @@ export function approveTicket(
   approvedBy: string,
 ): { ticketId: string; approved: ApprovedPhoto } {
   const ticket = requireTicket(id)
-  assertStatus(ticket, 'completed', 'approve')
+  requireTransition(ticket, 'approve')
 
   const approved = insertApproved(ticket, approvedBy)
   removeTicket(ticket.id)
@@ -121,13 +146,14 @@ export function approveTicket(
   return { ticketId: ticket.id, approved }
 }
 
+/** Manager reject: completed → pending (back on queue). */
 export function rejectTicket(id: string, actorId: string): Ticket {
   const ticket = requireTicket(id)
-  assertStatus(ticket, 'completed', 'reject')
+  const status = requireTransition(ticket, 'reject')
 
   const updated: Ticket = {
     ...ticket,
-    status: 'pending',
+    status,
     partnerReceiptId: undefined,
     updatedAt: new Date().toISOString(),
   }
@@ -137,7 +163,7 @@ export function rejectTicket(id: string, actorId: string): Ticket {
     ticketId: updated.id,
     actorId,
     from: 'completed',
-    to: 'pending',
+    to: status,
   })
   return updated
 }

@@ -53,6 +53,14 @@ export function useTickets() {
     return data.ticket
   }
 
+  async function progressPartnerTicket(id: string) {
+    const data = await apiFetch<{ ticket: Ticket }>(
+      `/api/tickets/${id}/partner-progress`,
+      { method: 'POST' },
+    )
+    return data.ticket
+  }
+
   async function approveTicket(id: string) {
     return apiFetch<{ ticketId: string; approved: unknown }>(
       `/api/tickets/${id}/approve`,
@@ -105,6 +113,7 @@ export function useTickets() {
     getTicket,
     createTicket,
     sendTicket,
+    progressPartnerTicket,
     approveTicket,
     rejectTicket,
     loadPartners,

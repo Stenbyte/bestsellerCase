@@ -1,6 +1,7 @@
 import request from 'supertest'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createApp } from '../src/app.js'
+import { clearAllPartnerSimulations } from '../src/services/partnerSimulation.js'
 import { resetStore } from '../src/store/memory.js'
 
 async function loginAs(role: 'operator' | 'manager') {
@@ -11,6 +12,7 @@ async function loginAs(role: 'operator' | 'manager') {
 
 describe('tickets', () => {
   beforeEach(() => {
+    clearAllPartnerSimulations()
     resetStore()
   })
 
@@ -149,18 +151,40 @@ describe('tickets', () => {
     expect(res.headers['content-type']).toMatch(/image\/jpeg/)
   })
 
-  it('sends a pending ticket through mock partner flow to completed', async () => {
+  it('send moves pending → sent, then partner-progress reaches completed', async () => {
     const token = await loginAs('operator')
-    const res = await request(createApp())
+    const sent = await request(createApp())
       .post('/api/tickets/ticket-1/send')
       .set('Authorization', `Bearer ${token}`)
 
-    expect(res.status).toBe(200)
-    expect(res.body.ticket).toMatchObject({
+    expect(sent.status).toBe(200)
+    expect(sent.body.ticket).toMatchObject({
       id: 'ticket-1',
-      status: 'completed',
+      status: 'sent',
       partnerReceiptId: expect.any(String),
     })
+
+    const mid = await request(createApp())
+      .post('/api/tickets/ticket-1/partner-progress')
+      .set('Authorization', `Bearer ${token}`)
+    expect(mid.status).toBe(200)
+    expect(mid.body.ticket.status).toBe('in_progress')
+
+    const done = await request(createApp())
+      .post('/api/tickets/ticket-1/partner-progress')
+      .set('Authorization', `Bearer ${token}`)
+    expect(done.status).toBe(200)
+    expect(done.body.ticket.status).toBe('completed')
+  })
+
+  it('returns 409 when partner-progress is called out of order', async () => {
+    const token = await loginAs('operator')
+    const res = await request(createApp())
+      .post('/api/tickets/ticket-1/partner-progress')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('CONFLICT')
   })
 
   it('returns 409 when sending a non-pending ticket', async () => {

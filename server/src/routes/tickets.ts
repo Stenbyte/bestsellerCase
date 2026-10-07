@@ -7,12 +7,14 @@ import {
   type CreateTicketBody,
   type ListTicketsQuery,
 } from '../schemas/ticket.js'
+import { schedulePartnerSimulation } from '../services/partnerSimulation.js'
 import {
   approveTicket,
   createTicket,
   getTicketById,
   listApprovedPhotos,
   listTicketsFiltered,
+  progressPartnerTicket,
   rejectTicket,
   sendTicket,
 } from '../services/tickets.js'
@@ -61,7 +63,18 @@ export function registerTickets(api: Router): void {
 
   api.post('/tickets/:id/send', (req, res, next) => {
     try {
-      const ticket = sendTicket(paramId(req.params.id), req.user!.id)
+      const id = paramId(req.params.id)
+      const ticket = sendTicket(id, req.user!.id)
+      schedulePartnerSimulation(id)
+      res.json({ ticket })
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  api.post('/tickets/:id/partner-progress', (req, res, next) => {
+    try {
+      const ticket = progressPartnerTicket(paramId(req.params.id))
       res.json({ ticket })
     } catch (err) {
       next(err)

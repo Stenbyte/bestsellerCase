@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { ApiError } from '@/types/api'
@@ -7,7 +7,7 @@ import { useTickets } from '@/composables/useTickets'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { assetUrl } from '@/utils/assets'
-import type { Partner, Ticket } from '@recolour/core'
+import type { Partner, Ticket, TicketStatus } from '@recolour/core'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,6 +20,7 @@ const partners = ref<Partner[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
 const busy = ref(false)
+let pollTimer: ReturnType<typeof setInterval> | null = null
 
 const id = computed(() => String(route.params.id))
 const partnerName = computed(
@@ -30,6 +31,34 @@ const canSend = computed(() => ticket.value?.status === 'pending')
 const canReview = computed(
   () => auth.isManager && ticket.value?.status === 'completed',
 )
+const inFlight = computed(() => {
+  const s = ticket.value?.status
+  return s === 'sent' || s === 'in_progress'
+})
+
+function stopPoll() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+function startPollIfNeeded() {
+  stopPoll()
+  if (!inFlight.value) return
+  pollTimer = setInterval(() => {
+    void refreshTicket()
+  }, 700)
+}
+
+async function refreshTicket() {
+  try {
+    ticket.value = await getTicket(id.value)
+    if (!inFlight.value) stopPoll()
+  } catch {
+    stopPoll()
+  }
+}
 
 async function load() {
   loading.value = true
@@ -39,6 +68,7 @@ async function load() {
       getTicket(id.value),
       loadPartners(),
     ])
+    startPollIfNeeded()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Failed to load ticket'
     ticket.value = null
@@ -52,7 +82,8 @@ async function runAction(action: 'send' | 'approve' | 'reject') {
   try {
     if (action === 'send') {
       ticket.value = await sendTicket(id.value)
-      ui.setBanner('Sent to partner (mock → completed)', 'success')
+      ui.setBanner('Sent to partner — status will advance automatically', 'success')
+      startPollIfNeeded()
     } else if (action === 'approve') {
       await approveTicket(id.value)
       ui.setBanner('Ticket approved', 'success')
@@ -70,8 +101,21 @@ async function runAction(action: 'send' | 'approve' | 'reject') {
   }
 }
 
+function statusHint(status: TicketStatus): string | null {
+  if (status === 'sent') return 'Partner received the job (mock). Waiting for in_progress…'
+  if (status === 'in_progress') return 'Partner is working (mock). Waiting for completed…'
+  if (status === 'completed' && !auth.isManager) {
+    return 'Awaiting manager approval. Approve / Reject are manager-only.'
+  }
+  return null
+}
+
 onMounted(() => {
   void load()
+})
+
+onUnmounted(() => {
+  stopPoll()
 })
 </script>
 
@@ -122,9 +166,7 @@ onMounted(() => {
         </div>
       </header>
 
-      <p v-if="ticket.status === 'completed' && !auth.isManager" class="hint">
-        Awaiting manager approval. Approve / Reject are manager-only.
-      </p>
+      <p v-if="statusHint(ticket.status)" class="hint">{{ statusHint(ticket.status) }}</p>
 
       <div class="panel">
         <h2>Pantone notes</h2>
