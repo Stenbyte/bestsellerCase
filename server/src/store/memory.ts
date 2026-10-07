@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { ApprovedPhoto, CreateTicketInput, Partner, Ticket } from '../types/ticket.js'
+import type { ApprovedPhoto, CreateTicketInput, Partner, Ticket } from '@recolour/core'
 import { buildSeedTickets, SEED_PARTNERS } from './seed.js'
 
 export interface MemoryStore {

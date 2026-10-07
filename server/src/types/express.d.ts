@@ -1,4 +1,4 @@
-import type { AuthUser } from './auth.js'
+import type { AuthUser } from '@recolour/core'
 
 declare global {
   namespace Express {

@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose'
-import type { AuthTokenPayload, AuthUser, Role } from '../types/auth.js'
+import type { AuthTokenPayload, AuthUser, Role } from '@recolour/core'
 import { AppError } from '../types/errors.js'
 
 const DEFAULT_SECRET = 'recolour-demo-secret-change-me'

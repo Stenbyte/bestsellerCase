@@ -1,7 +1,7 @@
 import type { Express, Router } from 'express'
 import { Router as createRouter } from 'express'
 import { authenticate, authorize } from '../middleware/auth.js'
-import { ROLES } from '../types/auth.js'
+import { ROLES } from '@recolour/core'
 import { registerAuthLogin, registerMe } from './auth.js'
 import { registerImages } from './images.js'
 import { registerPartners } from './partners.js'

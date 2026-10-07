@@ -1,4 +1,4 @@
-import type { Partner, Ticket } from '../types/ticket.js'
+import type { Partner, Ticket } from '@recolour/core'
 
 export const SEED_PARTNERS: Partner[] = [
   { id: 'partner-colorlab', name: 'ColorLab' },

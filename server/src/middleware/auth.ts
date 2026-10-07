@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express'
 import { verifyToken } from '../services/auth.js'
-import type { Role } from '../types/auth.js'
+import type { Role } from '@recolour/core'
 import { AppError } from '../types/errors.js'
 
 function extractBearerToken(req: Request): string | null {

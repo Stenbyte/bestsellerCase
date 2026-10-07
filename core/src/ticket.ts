@@ -49,3 +49,14 @@ export interface CreateTicketInput {
   pantoneNotes: string
   imagePaths: string[]
 }
+
+export interface TicketFilters {
+  status?: TicketStatus
+  priority?: Priority
+  partnerId?: string
+}
+
+export interface SeedImage {
+  path: string
+  url: string
+}

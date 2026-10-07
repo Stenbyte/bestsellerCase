@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { PRIORITIES, TICKET_STATUSES } from '../types/ticket.js'
+import { PRIORITIES, TICKET_STATUSES } from '@recolour/core'
 
 export const createTicketBodySchema = z
   .object({

@@ -1,5 +1,5 @@
 import { listApproved, listTickets } from '../store/memory.js'
-import { TICKET_STATUSES, type TicketStatus } from '../types/ticket.js'
+import { TICKET_STATUSES, type TicketStatus } from '@recolour/core'
 
 export interface Stats {
   byStatus: Record<TicketStatus, number>

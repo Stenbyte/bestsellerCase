@@ -13,17 +13,13 @@ import { isAllowedImagePath } from '../store/seed.js'
 import type {
   ApprovedPhoto,
   CreateTicketInput,
-  Priority,
   Ticket,
+  TicketFilters,
   TicketStatus,
-} from '../types/ticket.js'
+} from '@recolour/core'
 import { AppError } from '../types/errors.js'
 
-export interface TicketFilters {
-  status?: TicketStatus
-  priority?: Priority
-  partnerId?: string
-}
+export type { TicketFilters }
 
 export function listTicketsFiltered(filters: TicketFilters = {}): Ticket[] {
   return listTickets().filter((ticket) => {

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ROLES } from '../types/auth.js'
+import { ROLES } from '@recolour/core'
 
 export const loginBodySchema = z
   .object({
