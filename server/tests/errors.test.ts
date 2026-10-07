@@ -44,9 +44,24 @@ function appWithRoutes() {
   return app
 }
 
+async function loginAs(role: 'operator' | 'manager') {
+  const res = await request(createApp()).post('/api/auth/login').send({ role })
+  return res.body.token as string
+}
+
 describe('error contract', () => {
-  it('returns 404 for unknown routes', async () => {
+  it('returns 401 for unknown protected routes without auth', async () => {
     const res = await request(createApp()).get('/api/missing')
+
+    expect(res.status).toBe(401)
+    expect(res.body.error.code).toBe('UNAUTHORIZED')
+  })
+
+  it('returns 404 for unknown routes when authenticated', async () => {
+    const token = await loginAs('operator')
+    const res = await request(createApp())
+      .get('/api/missing')
+      .set('Authorization', `Bearer ${token}`)
 
     expect(res.status).toBe(404)
     expect(res.body).toEqual({
