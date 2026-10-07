@@ -65,6 +65,8 @@ async function onUpload(event: Event) {
 }
 
 async function submit() {
+  if (uploading.value || submitting.value) return
+
   const values = fieldsRef.value?.getValues()
   if (!values) return
 
@@ -138,8 +140,12 @@ async function submit() {
       <p v-if="formError" class="field-error">{{ formError }}</p>
 
       <div class="actions">
-        <button class="btn btn--primary" type="submit" :disabled="submitting">
-          {{ submitting ? 'Creating…' : 'Create ticket' }}
+        <button
+          class="btn btn--primary"
+          type="submit"
+          :disabled="submitting || uploading"
+        >
+          {{ submitting ? 'Creating…' : uploading ? 'Uploading…' : 'Create ticket' }}
         </button>
       </div>
     </form>
