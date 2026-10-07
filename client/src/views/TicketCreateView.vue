@@ -1,57 +1,56 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import ImagePicker from '@/components/ImagePicker.vue'
+import TicketCreateFields from '@/components/TicketCreateFields.vue'
 import { ApiError, type ZodFlatDetails } from '@/types/api'
 import { useTickets } from '@/composables/useTickets'
 import { useUiStore } from '@/stores/ui'
-import { PRIORITIES, type Partner, type Priority, type SeedImage } from '@recolour/core'
+import type { Partner, SeedImage } from '@recolour/core'
 
 const router = useRouter()
 const ui = useUiStore()
 const { createTicket, loadPartners, loadImages } = useTickets()
 
+const fieldsRef = ref<InstanceType<typeof TicketCreateFields> | null>(null)
 const partners = ref<Partner[]>([])
 const images = ref<SeedImage[]>([])
+const imagesOpen = ref(false)
 const submitting = ref(false)
 const formError = ref<string | null>(null)
 const fieldErrors = ref<Record<string, string>>({})
-
-const form = reactive({
-  photoId: '',
-  style: '',
-  priority: 'medium' as Priority,
-  partnerId: '',
-  pantoneNotes: '',
-  imagePaths: [] as string[],
-})
+const imagePaths = ref<string[]>([])
 
 onMounted(async () => {
   ;[partners.value, images.value] = await Promise.all([loadPartners(), loadImages()])
-  if (partners.value[0]) form.partnerId = partners.value[0].id
+  await nextTick()
+  if (partners.value[0]) fieldsRef.value?.setDefaultPartner(partners.value[0].id)
 })
 
-function toggleImage(path: string) {
-  const i = form.imagePaths.indexOf(path)
-  if (i === -1) form.imagePaths.push(path)
-  else form.imagePaths.splice(i, 1)
-}
-
 function applyValidationDetails(details: unknown) {
-  fieldErrors.value = {}
-  if (!details || typeof details !== 'object') return
-  const flat = details as ZodFlatDetails
-  for (const [key, messages] of Object.entries(flat.fieldErrors ?? {})) {
-    if (messages?.[0]) fieldErrors.value[key] = messages[0]
+  const next: Record<string, string> = {}
+  if (details && typeof details === 'object') {
+    const flat = details as ZodFlatDetails
+    for (const [key, messages] of Object.entries(flat.fieldErrors ?? {})) {
+      if (messages?.[0]) next[key] = messages[0]
+    }
+    if (flat.formErrors?.[0]) formError.value = flat.formErrors[0]
   }
-  if (flat.formErrors?.[0]) formError.value = flat.formErrors[0]
+  fieldErrors.value = next
 }
 
 async function submit() {
+  const values = fieldsRef.value?.getValues()
+  if (!values) return
+
   submitting.value = true
   formError.value = null
   fieldErrors.value = {}
   try {
-    const ticket = await createTicket({ ...form })
+    const ticket = await createTicket({
+      ...values,
+      imagePaths: imagePaths.value,
+    })
     ui.setBanner('Ticket created', 'success')
     await router.push({ name: 'ticket-detail', params: { id: ticket.id } })
   } catch (err) {
@@ -75,54 +74,22 @@ async function submit() {
     </header>
 
     <form class="form" @submit.prevent="submit">
-      <label>
-        Photo ID
-        <input v-model="form.photoId" type="text" required maxlength="64" />
-        <span v-if="fieldErrors.photoId" class="field-error">{{ fieldErrors.photoId }}</span>
-      </label>
-
-      <label>
-        Style
-        <input v-model="form.style" type="text" required maxlength="200" />
-        <span v-if="fieldErrors.style" class="field-error">{{ fieldErrors.style }}</span>
-      </label>
-
-      <div class="row">
-        <label>
-          Priority
-          <select v-model="form.priority">
-            <option v-for="p in PRIORITIES" :key="p" :value="p">{{ p }}</option>
-          </select>
-        </label>
-        <label>
-          Partner
-          <select v-model="form.partnerId" required>
-            <option v-for="p in partners" :key="p.id" :value="p.id">{{ p.name }}</option>
-          </select>
-          <span v-if="fieldErrors.partnerId" class="field-error">{{ fieldErrors.partnerId }}</span>
-        </label>
-      </div>
-
-      <label>
-        Pantone notes
-        <textarea v-model="form.pantoneNotes" rows="4" required maxlength="2000" />
-        <span v-if="fieldErrors.pantoneNotes" class="field-error">{{ fieldErrors.pantoneNotes }}</span>
-      </label>
+      <TicketCreateFields
+        ref="fieldsRef"
+        :partners="partners"
+        :field-errors="fieldErrors"
+      />
 
       <fieldset>
         <legend>Images</legend>
         <p v-if="fieldErrors.imagePaths" class="field-error">{{ fieldErrors.imagePaths }}</p>
-        <div class="images">
-          <label v-for="img in images" :key="img.path" class="image-pick">
-            <input
-              type="checkbox"
-              :checked="form.imagePaths.includes(img.path)"
-              @change="toggleImage(img.path)"
-            />
-            <img :src="img.url" :alt="img.path" loading="lazy" />
-            <span>{{ img.path }}</span>
-          </label>
-        </div>
+        <p class="hint">
+          {{ imagePaths.length }} selected
+          <button type="button" class="linkish" @click="imagesOpen = !imagesOpen">
+            {{ imagesOpen ? 'Hide list' : 'Choose images' }}
+          </button>
+        </p>
+        <ImagePicker v-if="imagesOpen" v-model="imagePaths" :images="images" />
       </fieldset>
 
       <p v-if="formError" class="field-error">{{ formError }}</p>
@@ -156,78 +123,42 @@ h1 {
   max-width: 48rem;
 }
 
-label,
 fieldset {
   display: grid;
-  gap: 0.35rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-fieldset {
+  gap: 0.5rem;
   border: 1px solid var(--line);
   padding: 0.85rem;
   background: var(--surface);
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 legend {
   padding: 0 0.35rem;
 }
 
-input,
-select,
-textarea {
-  font: inherit;
+.hint {
+  margin: 0;
   font-weight: 400;
-  padding: 0.5rem 0.6rem;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: #fff;
-}
-
-.row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  color: var(--muted);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
   gap: 0.75rem;
 }
 
-.images {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
-  gap: 0.65rem;
-  font-weight: 400;
-}
-
-.image-pick {
-  border: 1px solid var(--line);
-  padding: 0.4rem;
-  background: #fff;
+.linkish {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
   cursor: pointer;
-}
-
-.image-pick img {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  display: block;
-}
-
-.image-pick span {
-  display: block;
-  margin-top: 0.35rem;
-  font-size: 0.68rem;
-  color: var(--muted);
-  word-break: break-all;
+  padding: 0;
 }
 
 .actions {
   display: flex;
   gap: 0.75rem;
-}
-
-@media (max-width: 640px) {
-  .row {
-    grid-template-columns: 1fr;
-  }
 }
 </style>
