@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import jpeg from 'jpeg-js'
 import { logEvent } from '../lib/telemetry.js'
 import { AppError } from '../types/errors.js'
 import { UPLOAD_ROOT } from '../store/paths.js'
@@ -20,6 +21,24 @@ export interface UploadedImage {
 
 function isJpegMagic(buf: Buffer): boolean {
   return buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff
+}
+
+/** Magic bytes alone are not enough — require a full decode before persist. */
+function assertDecodableJpeg(buf: Buffer): void {
+  if (!isJpegMagic(buf)) {
+    throw AppError.validation('File content is not a valid JPEG (magic bytes)')
+  }
+  try {
+    const image = jpeg.decode(buf, {
+      formatAsRGBA: false,
+      maxMemoryUsageInMB: 2048,
+    })
+    if (!image.width || !image.height) {
+      throw new Error('empty dimensions')
+    }
+  } catch {
+    throw AppError.validation('File content is not a decodable JPEG')
+  }
 }
 
 export async function saveValidatedJpeg(file: {
@@ -46,9 +65,7 @@ export async function saveValidatedJpeg(file: {
     })
   }
 
-  if (!isJpegMagic(file.buffer)) {
-    throw AppError.validation('File content is not a valid JPEG (magic bytes)')
-  }
+  assertDecodableJpeg(file.buffer)
 
   ensureUploadDir()
   const filename = `${randomUUID()}.jpg`
