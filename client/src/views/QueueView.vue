@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import StatusBadge from '@/components/StatusBadge.vue'
 import { useTickets } from '@/composables/useTickets'
 import {
@@ -11,7 +11,11 @@ import {
   type TicketStatus,
 } from '@recolour/core'
 
+const route = useRoute()
 const { tickets, loading, error, loadTickets, loadPartners } = useTickets()
+
+const queryPartner =
+  typeof route.query.partnerId === 'string' ? route.query.partnerId : ''
 
 const filters = reactive<{
   status: TicketStatus | ''
@@ -20,7 +24,7 @@ const filters = reactive<{
 }>({
   status: '',
   priority: '',
-  partnerId: '',
+  partnerId: queryPartner,
 })
 
 const partners = reactive<{ list: Partner[] }>({ list: [] })

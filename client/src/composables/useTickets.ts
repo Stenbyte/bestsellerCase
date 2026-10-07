@@ -1,9 +1,11 @@
 import { ref } from 'vue'
 import { apiFetch } from '@/composables/useApi'
 import type {
+  ApprovedPhoto,
   CreateTicketInput,
   Partner,
   SeedImage,
+  Stats,
   Ticket,
   TicketFilters,
 } from '@recolour/core'
@@ -78,6 +80,16 @@ export function useTickets() {
     return data.images
   }
 
+  async function loadApproved() {
+    const data = await apiFetch<{ approved: ApprovedPhoto[] }>('/api/approved')
+    return data.approved
+  }
+
+  async function loadStats() {
+    const data = await apiFetch<{ stats: Stats }>('/api/stats')
+    return data.stats
+  }
+
   return {
     tickets,
     loading,
@@ -90,5 +102,7 @@ export function useTickets() {
     rejectTicket,
     loadPartners,
     loadImages,
+    loadApproved,
+    loadStats,
   }
 }

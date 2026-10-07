@@ -6,6 +6,7 @@ import { ApiError } from '@/types/api'
 import { useTickets } from '@/composables/useTickets'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
+import { assetUrl } from '@/utils/assets'
 import type { Partner, Ticket } from '@recolour/core'
 
 const route = useRoute()
@@ -24,10 +25,6 @@ const id = computed(() => String(route.params.id))
 const partnerName = computed(
   () => partners.value.find((p) => p.id === ticket.value?.partnerId)?.name ?? ticket.value?.partnerId,
 )
-
-function assetUrl(path: string) {
-  return `/assets/${path.split('/').map(encodeURIComponent).join('/')}`
-}
 
 const canSend = computed(() => ticket.value?.status === 'pending')
 const canReview = computed(

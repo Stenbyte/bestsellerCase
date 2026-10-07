@@ -18,7 +18,12 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/',
-    redirect: '/queue',
+    redirect: '/dashboard',
+  },
+  {
+    path: '/dashboard',
+    name: 'dashboard',
+    component: () => import('@/views/DashboardView.vue'),
   },
   {
     path: '/queue',
@@ -35,6 +40,16 @@ const routes: RouteRecordRaw[] = [
     name: 'ticket-detail',
     component: () => import('@/views/TicketDetailView.vue'),
   },
+  {
+    path: '/approved',
+    name: 'approved',
+    component: () => import('@/views/ApprovedView.vue'),
+  },
+  {
+    path: '/partners',
+    name: 'partners',
+    component: () => import('@/views/PartnersView.vue'),
+  },
 ]
 
 const router = createRouter({
@@ -47,7 +62,7 @@ router.beforeEach((to) => {
 
   if (to.meta.public) {
     if (auth.isAuthenticated && to.name === 'login') {
-      return { name: 'queue' }
+      return { name: 'dashboard' }
     }
     return true
   }
@@ -58,7 +73,7 @@ router.beforeEach((to) => {
 
   const allowed = to.meta.roles
   if (allowed && auth.role && !allowed.includes(auth.role)) {
-    return { name: 'queue' }
+    return { name: 'dashboard' }
   }
 
   return true

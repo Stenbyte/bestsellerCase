@@ -1,14 +1,7 @@
 import { listApproved, listTickets } from '../store/memory.js'
-import { TICKET_STATUSES, type TicketStatus } from '@recolour/core'
+import { TICKET_STATUSES, type Stats, type TicketStatus } from '@recolour/core'
 
-export interface Stats {
-  byStatus: Record<TicketStatus, number>
-  pending: number
-  awaitingApproval: number
-  inFlight: number
-  approved: number
-  totalInQueue: number
-}
+export type { Stats }
 
 export function getStats(): Stats {
   const tickets = listTickets()

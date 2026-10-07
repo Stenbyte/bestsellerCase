@@ -31,10 +31,13 @@ function logout() {
 <template>
   <header class="header">
     <div class="header__brand">
-      <RouterLink to="/queue" class="logo">Recolour</RouterLink>
+      <RouterLink to="/dashboard" class="logo">Recolour</RouterLink>
       <nav class="nav" aria-label="Main">
+        <RouterLink to="/dashboard">Dashboard</RouterLink>
         <RouterLink to="/queue">Queue</RouterLink>
         <RouterLink to="/tickets/new">Create</RouterLink>
+        <RouterLink to="/approved">Approved</RouterLink>
+        <RouterLink to="/partners">Partners</RouterLink>
       </nav>
     </div>
 
@@ -81,7 +84,8 @@ function logout() {
 
 .nav {
   display: flex;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.85rem 1rem;
 }
 
 .nav a {

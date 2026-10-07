@@ -19,7 +19,7 @@ async function submit() {
   try {
     await auth.login(role.value)
     ui.setBanner(`Signed in as ${role.value}`, 'success')
-    await router.push({ name: 'queue' })
+    await router.push({ name: 'dashboard' })
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Login failed'
   } finally {
