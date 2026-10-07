@@ -186,7 +186,7 @@ th {
   text-transform: capitalize;
 }
 
-a {
+.table a {
   color: var(--accent);
 }
 </style>

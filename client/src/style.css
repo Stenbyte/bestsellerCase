@@ -6,8 +6,8 @@
   --ink: #15202b;
   --muted: #5a6a7a;
   --line: #d7dee6;
-  --accent: #0f6b6b;
-  --accent-hover: #0b5555;
+  --accent: #15202b;
+  --accent-hover: #2a3a4a;
   --font-sans: 'IBM Plex Sans', 'Segoe UI', sans-serif;
   --font-display: 'Fraunces', Georgia, serif;
 }
@@ -58,13 +58,16 @@ h2,
   cursor: not-allowed;
 }
 
-.btn--primary {
+.btn--primary,
+.btn--primary:link,
+.btn--primary:visited {
   background: var(--accent);
   color: #fff;
 }
 
 .btn--primary:hover:not(:disabled) {
   background: var(--accent-hover);
+  color: #fff;
 }
 
 .btn--ghost {
