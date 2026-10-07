@@ -5,6 +5,7 @@ import { ROLES } from '../types/auth.js'
 import { registerAuthLogin, registerMe } from './auth.js'
 import { registerImages } from './images.js'
 import { registerPartners } from './partners.js'
+import { registerStats } from './stats.js'
 import { registerTickets } from './tickets.js'
 
 export function createProtectedApi(): Router {
@@ -21,6 +22,7 @@ export function registerRoutes(app: Express): void {
   registerMe(api)
   registerTickets(api)
   registerPartners(api)
+  registerStats(api)
   registerImages(api)
   app.use('/api', api)
 }
