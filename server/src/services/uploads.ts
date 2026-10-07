@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { logEvent } from '../lib/telemetry.js'
 import { AppError } from '../types/errors.js'
 import { UPLOAD_ROOT } from '../store/paths.js'
 import {
@@ -55,8 +56,10 @@ export async function saveValidatedJpeg(file: {
   await fs.writeFile(path.join(UPLOAD_ROOT, filename), file.buffer)
   registerUploadedPath(relativePath)
 
-  return {
+  const image = {
     path: relativePath,
     url: `/assets/${relativePath.split('/').map(encodeURIComponent).join('/')}`,
   }
+  logEvent('image.upload', { path: image.path, bytes: file.size })
+  return image
 }

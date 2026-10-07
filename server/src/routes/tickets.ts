@@ -61,7 +61,7 @@ export function registerTickets(api: Router): void {
 
   api.post('/tickets/:id/send', (req, res, next) => {
     try {
-      const ticket = sendTicket(paramId(req.params.id))
+      const ticket = sendTicket(paramId(req.params.id), req.user!.id)
       res.json({ ticket })
     } catch (err) {
       next(err)
@@ -79,7 +79,7 @@ export function registerTickets(api: Router): void {
 
   api.post('/tickets/:id/reject', authorize('manager'), (req, res, next) => {
     try {
-      const ticket = rejectTicket(paramId(req.params.id))
+      const ticket = rejectTicket(paramId(req.params.id), req.user!.id)
       res.json({ ticket })
     } catch (err) {
       next(err)

@@ -1,5 +1,6 @@
-import { listApproved, listTickets } from '../store/memory.js'
 import { TICKET_STATUSES, type Stats, type TicketStatus } from '@recolour/core'
+import { logEvent } from '../lib/telemetry.js'
+import { listApproved, listTickets } from '../store/memory.js'
 
 export type { Stats }
 
@@ -13,7 +14,7 @@ export function getStats(): Stats {
     byStatus[ticket.status] += 1
   }
 
-  return {
+  const stats: Stats = {
     byStatus,
     pending: byStatus.pending,
     awaitingApproval: byStatus.completed,
@@ -21,4 +22,10 @@ export function getStats(): Stats {
     approved: listApproved().length,
     totalInQueue: tickets.length,
   }
+  logEvent('stats.get', {
+    pending: stats.pending,
+    awaitingApproval: stats.awaitingApproval,
+    approved: stats.approved,
+  })
+  return stats
 }

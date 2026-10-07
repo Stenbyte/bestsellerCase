@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose'
 import type { AuthTokenPayload, AuthUser, Role } from '@recolour/core'
+import { logEvent } from '../lib/telemetry.js'
 import { AppError } from '../types/errors.js'
 
 const DEFAULT_SECRET = 'recolour-demo-secret-change-me'
@@ -68,5 +69,6 @@ export async function verifyToken(token: string): Promise<AuthUser> {
 export async function login(role: Role, email?: string) {
   const user = resolveDemoUser(role, email)
   const token = await signToken(user)
+  logEvent('auth.login', { userId: user.id, role: user.role })
   return { token, user }
 }

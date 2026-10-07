@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { logEvent } from '../lib/telemetry.js'
 import {
   getPartner,
   getTicket,
@@ -22,12 +23,14 @@ import { AppError } from '../types/errors.js'
 export type { TicketFilters }
 
 export function listTicketsFiltered(filters: TicketFilters = {}): Ticket[] {
-  return listTickets().filter((ticket) => {
+  const tickets = listTickets().filter((ticket) => {
     if (filters.status && ticket.status !== filters.status) return false
     if (filters.priority && ticket.priority !== filters.priority) return false
     if (filters.partnerId && ticket.partnerId !== filters.partnerId) return false
     return true
   })
+  logEvent('ticket.list', { count: tickets.length, filters })
+  return tickets
 }
 
 function requireTicket(id: string): Ticket {
@@ -37,7 +40,9 @@ function requireTicket(id: string): Ticket {
 }
 
 export function getTicketById(id: string): Ticket {
-  return requireTicket(id)
+  const ticket = requireTicket(id)
+  logEvent('ticket.get', { ticketId: id, status: ticket.status })
+  return ticket
 }
 
 export function createTicket(input: CreateTicketInput, createdBy: string): Ticket {
@@ -52,7 +57,14 @@ export function createTicket(input: CreateTicketInput, createdBy: string): Ticke
     })
   }
 
-  return insertTicket(input, createdBy)
+  const ticket = insertTicket(input, createdBy)
+  logEvent('ticket.create', {
+    ticketId: ticket.id,
+    createdBy,
+    partnerId: ticket.partnerId,
+    priority: ticket.priority,
+  })
+  return ticket
 }
 
 function assertStatus(ticket: Ticket, expected: TicketStatus, action: string): void {
@@ -67,7 +79,7 @@ function assertStatus(ticket: Ticket, expected: TicketStatus, action: string): v
 }
 
 /** Mock partner flow: pending → sent → in_progress → completed (immediate). */
-export function sendTicket(id: string): Ticket {
+export function sendTicket(id: string, actorId: string): Ticket {
   const ticket = requireTicket(id)
   assertStatus(ticket, 'pending', 'send')
 
@@ -79,6 +91,14 @@ export function sendTicket(id: string): Ticket {
     updatedAt: now,
   }
   saveTicket(updated)
+
+  logEvent('ticket.send', {
+    ticketId: updated.id,
+    actorId,
+    partnerId: updated.partnerId,
+    partnerReceiptId: updated.partnerReceiptId,
+    path: 'pending→sent→in_progress→completed',
+  })
   return updated
 }
 
@@ -92,10 +112,16 @@ export function approveTicket(
   const approved = insertApproved(ticket, approvedBy)
   removeTicket(ticket.id)
 
+  logEvent('ticket.approve', {
+    ticketId: ticket.id,
+    approvedId: approved.id,
+    approvedBy,
+    photoId: ticket.photoId,
+  })
   return { ticketId: ticket.id, approved }
 }
 
-export function rejectTicket(id: string): Ticket {
+export function rejectTicket(id: string, actorId: string): Ticket {
   const ticket = requireTicket(id)
   assertStatus(ticket, 'completed', 'reject')
 
@@ -106,9 +132,18 @@ export function rejectTicket(id: string): Ticket {
     updatedAt: new Date().toISOString(),
   }
   saveTicket(updated)
+
+  logEvent('ticket.reject', {
+    ticketId: updated.id,
+    actorId,
+    from: 'completed',
+    to: 'pending',
+  })
   return updated
 }
 
 export function listApprovedPhotos(): ApprovedPhoto[] {
-  return listApproved()
+  const approved = listApproved()
+  logEvent('approved.list', { count: approved.length })
+  return approved
 }
