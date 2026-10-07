@@ -55,3 +55,37 @@ export function insertTicket(input: CreateTicketInput, createdBy: string): Ticke
   store.tickets.unshift(ticket)
   return ticket
 }
+
+export function saveTicket(ticket: Ticket): Ticket {
+  const index = store.tickets.findIndex((t) => t.id === ticket.id)
+  if (index === -1) return ticket
+  store.tickets[index] = ticket
+  return ticket
+}
+
+export function removeTicket(id: string): Ticket | undefined {
+  const index = store.tickets.findIndex((t) => t.id === id)
+  if (index === -1) return undefined
+  const [removed] = store.tickets.splice(index, 1)
+  return removed
+}
+
+export function listApproved(): ApprovedPhoto[] {
+  return store.approved
+}
+
+export function insertApproved(
+  ticket: Ticket,
+  approvedBy: string,
+): ApprovedPhoto {
+  const photo: ApprovedPhoto = {
+    id: `approved-${randomUUID()}`,
+    ticketId: ticket.id,
+    photoId: ticket.photoId,
+    imagePaths: [...ticket.imagePaths],
+    approvedAt: new Date().toISOString(),
+    approvedBy,
+  }
+  store.approved.unshift(photo)
+  return photo
+}

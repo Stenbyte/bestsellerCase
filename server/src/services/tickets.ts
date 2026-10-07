@@ -1,11 +1,22 @@
+import { randomUUID } from 'node:crypto'
 import {
   getPartner,
   getTicket,
+  insertApproved,
   insertTicket,
+  listApproved,
   listTickets,
+  removeTicket,
+  saveTicket,
 } from '../store/memory.js'
 import { isAllowedImagePath } from '../store/seed.js'
-import type { CreateTicketInput, Ticket, TicketStatus, Priority } from '../types/ticket.js'
+import type {
+  ApprovedPhoto,
+  CreateTicketInput,
+  Priority,
+  Ticket,
+  TicketStatus,
+} from '../types/ticket.js'
 import { AppError } from '../types/errors.js'
 
 export interface TicketFilters {
@@ -23,10 +34,14 @@ export function listTicketsFiltered(filters: TicketFilters = {}): Ticket[] {
   })
 }
 
-export function getTicketById(id: string): Ticket {
+function requireTicket(id: string): Ticket {
   const ticket = getTicket(id)
   if (!ticket) throw AppError.notFound('Ticket not found')
   return ticket
+}
+
+export function getTicketById(id: string): Ticket {
+  return requireTicket(id)
 }
 
 export function createTicket(input: CreateTicketInput, createdBy: string): Ticket {
@@ -42,4 +57,62 @@ export function createTicket(input: CreateTicketInput, createdBy: string): Ticke
   }
 
   return insertTicket(input, createdBy)
+}
+
+function assertStatus(ticket: Ticket, expected: TicketStatus, action: string): void {
+  if (ticket.status !== expected) {
+    throw AppError.conflict(`Cannot ${action} ticket in status '${ticket.status}'`, {
+      ticketId: ticket.id,
+      from: ticket.status,
+      expected,
+      action,
+    })
+  }
+}
+
+/** Mock partner flow: pending → sent → in_progress → completed (immediate). */
+export function sendTicket(id: string): Ticket {
+  const ticket = requireTicket(id)
+  assertStatus(ticket, 'pending', 'send')
+
+  const now = new Date().toISOString()
+  const updated: Ticket = {
+    ...ticket,
+    status: 'completed',
+    partnerReceiptId: `rcpt-${randomUUID()}`,
+    updatedAt: now,
+  }
+  saveTicket(updated)
+  return updated
+}
+
+export function approveTicket(
+  id: string,
+  approvedBy: string,
+): { ticketId: string; approved: ApprovedPhoto } {
+  const ticket = requireTicket(id)
+  assertStatus(ticket, 'completed', 'approve')
+
+  const approved = insertApproved(ticket, approvedBy)
+  removeTicket(ticket.id)
+
+  return { ticketId: ticket.id, approved }
+}
+
+export function rejectTicket(id: string): Ticket {
+  const ticket = requireTicket(id)
+  assertStatus(ticket, 'completed', 'reject')
+
+  const updated: Ticket = {
+    ...ticket,
+    status: 'pending',
+    partnerReceiptId: undefined,
+    updatedAt: new Date().toISOString(),
+  }
+  saveTicket(updated)
+  return updated
+}
+
+export function listApprovedPhotos(): ApprovedPhoto[] {
+  return listApproved()
 }

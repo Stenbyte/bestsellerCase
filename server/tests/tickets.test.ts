@@ -148,4 +148,87 @@ describe('tickets', () => {
     expect(res.status).toBe(200)
     expect(res.headers['content-type']).toMatch(/image\/jpeg/)
   })
+
+  it('sends a pending ticket through mock partner flow to completed', async () => {
+    const token = await loginAs('operator')
+    const res = await request(createApp())
+      .post('/api/tickets/ticket-1/send')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.ticket).toMatchObject({
+      id: 'ticket-1',
+      status: 'completed',
+      partnerReceiptId: expect.any(String),
+    })
+  })
+
+  it('returns 409 when sending a non-pending ticket', async () => {
+    const token = await loginAs('operator')
+    const res = await request(createApp())
+      .post('/api/tickets/ticket-3/send')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('CONFLICT')
+  })
+
+  it('allows manager to approve a completed ticket', async () => {
+    const token = await loginAs('manager')
+    const res = await request(createApp())
+      .post('/api/tickets/ticket-3/approve')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.approved).toMatchObject({
+      ticketId: 'ticket-3',
+      photoId: '15377488',
+      approvedBy: 'user-manager',
+    })
+
+    const missing = await request(createApp())
+      .get('/api/tickets/ticket-3')
+      .set('Authorization', `Bearer ${token}`)
+    expect(missing.status).toBe(404)
+
+    const approved = await request(createApp())
+      .get('/api/approved')
+      .set('Authorization', `Bearer ${token}`)
+    expect(approved.status).toBe(200)
+    expect(approved.body.approved).toHaveLength(1)
+  })
+
+  it('returns 403 when operator tries to approve', async () => {
+    const token = await loginAs('operator')
+    const res = await request(createApp())
+      .post('/api/tickets/ticket-3/approve')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe('FORBIDDEN')
+  })
+
+  it('rejects completed ticket back to pending', async () => {
+    const token = await loginAs('manager')
+    const res = await request(createApp())
+      .post('/api/tickets/ticket-3/reject')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(200)
+    expect(res.body.ticket).toMatchObject({
+      id: 'ticket-3',
+      status: 'pending',
+    })
+    expect(res.body.ticket.partnerReceiptId).toBeUndefined()
+  })
+
+  it('returns 403 when operator tries to reject', async () => {
+    const token = await loginAs('operator')
+    const res = await request(createApp())
+      .post('/api/tickets/ticket-3/reject')
+      .set('Authorization', `Bearer ${token}`)
+
+    expect(res.status).toBe(403)
+    expect(res.body.error.code).toBe('FORBIDDEN')
+  })
 })

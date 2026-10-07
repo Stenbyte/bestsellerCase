@@ -1,4 +1,5 @@
 import type { Router } from 'express'
+import { authorize } from '../middleware/auth.js'
 import { validateBody, validateQuery } from '../middleware/validate.js'
 import {
   createTicketBodySchema,
@@ -6,7 +7,19 @@ import {
   type CreateTicketBody,
   type ListTicketsQuery,
 } from '../schemas/ticket.js'
-import { createTicket, getTicketById, listTicketsFiltered } from '../services/tickets.js'
+import {
+  approveTicket,
+  createTicket,
+  getTicketById,
+  listApprovedPhotos,
+  listTicketsFiltered,
+  rejectTicket,
+  sendTicket,
+} from '../services/tickets.js'
+
+function paramId(value: string | string[]): string {
+  return Array.isArray(value) ? value[0]! : value
+}
 
 export function registerTickets(api: Router): void {
   api.get('/tickets', validateQuery(listTicketsQuerySchema), (req, res, next) => {
@@ -19,9 +32,17 @@ export function registerTickets(api: Router): void {
     }
   })
 
+  api.get('/approved', (_req, res, next) => {
+    try {
+      res.json({ approved: listApprovedPhotos() })
+    } catch (err) {
+      next(err)
+    }
+  })
+
   api.get('/tickets/:id', (req, res, next) => {
     try {
-      const ticket = getTicketById(req.params.id)
+      const ticket = getTicketById(paramId(req.params.id))
       res.json({ ticket })
     } catch (err) {
       next(err)
@@ -33,6 +54,33 @@ export function registerTickets(api: Router): void {
       const body = req.body as CreateTicketBody
       const ticket = createTicket(body, req.user!.id)
       res.status(201).json({ ticket })
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  api.post('/tickets/:id/send', (req, res, next) => {
+    try {
+      const ticket = sendTicket(paramId(req.params.id))
+      res.json({ ticket })
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  api.post('/tickets/:id/approve', authorize('manager'), (req, res, next) => {
+    try {
+      const result = approveTicket(paramId(req.params.id), req.user!.id)
+      res.json(result)
+    } catch (err) {
+      next(err)
+    }
+  })
+
+  api.post('/tickets/:id/reject', authorize('manager'), (req, res, next) => {
+    try {
+      const ticket = rejectTicket(paramId(req.params.id))
+      res.json({ ticket })
     } catch (err) {
       next(err)
     }
